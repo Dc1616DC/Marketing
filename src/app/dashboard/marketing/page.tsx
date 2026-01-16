@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
+import Link from 'next/link';
 import { StatsCards, GenerateForm, DraftList } from '@/components/marketing';
 import { Draft } from '@/lib/db/types';
 
@@ -217,14 +218,23 @@ export default function MarketingDashboard() {
                 Chase Wellness Content Automation
               </p>
             </div>
-            <button
-              onClick={fetchData}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/dashboard/discover"
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Search className="h-4 w-4" />
+                Discover Opportunities
+              </Link>
+              <button
+                onClick={fetchData}
+                disabled={isLoading}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
           </div>
         </div>
       </header>

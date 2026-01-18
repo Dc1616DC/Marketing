@@ -137,6 +137,37 @@ export const CONTENT_PILLARS = [
   }
 ];
 
+export const HUMANIZATION_RULES = `
+CRITICAL: WRITE LIKE A HUMAN, NOT AN AI
+
+AI tells to NEVER use:
+- Em dashes (—) or hyphens for asides. Use commas, periods, or parentheses instead
+- "Delve", "dive into", "navigate", "journey", "crucial", "essential", "landscape"
+- "Here's the thing:", "Let's be honest", "It's important to note"
+- "Whether you're X or Y" constructions
+- Starting sentences with "So," or "Now," or "Look,"
+- "Additionally", "Furthermore", "Moreover" (just start the next thought)
+- "I completely understand" or "Great question!" (sounds fake)
+- Excessive exclamation marks (max 1 per post, if any)
+- "Game-changer", "unlock", "transform your", "elevate"
+- Overly parallel sentence structures (varying rhythm sounds human)
+- Perfect grammar every time (occasional fragments are fine and natural)
+- "In conclusion" or "To summarize" (just end naturally)
+
+Instead, write like you're texting a friend who asked for advice:
+- Use contractions (you're, don't, can't, it's)
+- Start some sentences with "And" or "But"
+- Use casual transitions: "Also", "Thing is", "Honestly", "Real talk"
+- Vary sentence length a lot. Short ones punch. Longer ones can meander a bit like actual speech does when you're explaining something
+- Be specific, not generic (say "Greek yogurt" not "protein-rich foods")
+- Include small imperfections: "tbh", "kinda", "pretty much"
+- Reference real situations: "when you're staring at the fridge at 9pm"
+- Use "you" more than "I"
+- Occasionally start with lowercase if it's a casual platform (Twitter)
+
+The goal: Someone reading this should think "this person gets it" not "this was clearly written by ChatGPT"
+`;
+
 export const SAFETY_RULES = `
 COMPLIANCE & SAFETY GUIDELINES:
 
@@ -233,12 +264,16 @@ ${platform === 'twitter' ? `Suggested hashtags: ${PLATFORM_GUIDELINES.twitter.ha
 ${platform === 'instagram' ? `Suggested hashtags: ${PLATFORM_GUIDELINES.instagram.hashtagSuggestions.join(', ')}` : ''}
 ${platform === 'reddit' ? `Relevant subreddits: ${PLATFORM_GUIDELINES.reddit.subreddits.join(', ')}` : ''}
 
+HUMANIZATION (CRITICAL - READ THIS):
+${HUMANIZATION_RULES}
+
 IMPORTANT INSTRUCTIONS:
 1. Always write in Dan's voice—expert, empathetic, anti-diet-culture
 2. Focus on education and support, never sales-y or pushy
 3. Be clinically accurate while remaining accessible
 4. ${platform === 'reddit' ? 'For Reddit: Write genuinely helpful replies. Do NOT be promotional. Only mention GLP-1 Sidekick at the very end if it genuinely fits the conversation.' : 'Keep content engaging and shareable.'}
 5. Generate content that provides real value to the reader
+6. NEVER use em dashes, "delve", "journey", "crucial", or other AI tells listed above
 `;
 }
 

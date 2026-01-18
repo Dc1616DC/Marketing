@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Search } from 'lucide-react';
+import { RefreshCw, Search, Video } from 'lucide-react';
 import Link from 'next/link';
 import { StatsCards, GenerateForm, DraftList } from '@/components/marketing';
 import { Draft } from '@/lib/db/types';
@@ -220,11 +220,18 @@ export default function MarketingDashboard() {
             </div>
             <div className="flex items-center gap-3">
               <Link
+                href="/dashboard/create-reel"
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Video className="h-4 w-4" />
+                Create Reel
+              </Link>
+              <Link
                 href="/dashboard/discover"
                 className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
                 <Search className="h-4 w-4" />
-                Discover Opportunities
+                Discover
               </Link>
               <button
                 onClick={fetchData}

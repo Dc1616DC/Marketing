@@ -203,6 +203,59 @@ export async function generateInstagramReel(
 }
 
 /**
+ * Add audio track to existing video (for Runway videos)
+ */
+export async function addAudioToVideo(
+  videoBuffer: Buffer,
+  audioBuffer: Buffer,
+  options?: { trimToAudio?: boolean }
+): Promise<GeneratedVideo> {
+  const ffmpegAvailable = await isFFmpegAvailable();
+  if (!ffmpegAvailable) {
+    throw new Error('FFmpeg is not installed');
+  }
+
+  await ensureTempDir();
+
+  const id = uuidv4();
+  const videoPath = path.join(TEMP_DIR, `${id}-video.mp4`);
+  const audioPath = path.join(TEMP_DIR, `${id}-audio.mp3`);
+  const outputPath = path.join(TEMP_DIR, `${id}-combined.mp4`);
+
+  try {
+    await writeFile(videoPath, videoBuffer);
+    await writeFile(audioPath, audioBuffer);
+
+    const audioDuration = await getAudioDuration(audioPath);
+
+    // Combine video with audio, trim to audio length if specified
+    const ffmpegCmd = options?.trimToAudio
+      ? `ffmpeg -y -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -b:a 192k -shortest -t ${audioDuration} "${outputPath}"`
+      : `ffmpeg -y -i "${videoPath}" -i "${audioPath}" -c:v copy -c:a aac -b:a 192k -shortest "${outputPath}"`;
+
+    await execAsync(ffmpegCmd);
+
+    const { stdout: sizeOutput } = await execAsync(`stat -f%z "${outputPath}" 2>/dev/null || stat -c%s "${outputPath}"`);
+    const fileSize = parseInt(sizeOutput.trim());
+
+    return {
+      filePath: outputPath,
+      duration: audioDuration,
+      width: 768,  // Runway portrait dimensions
+      height: 1280,
+      fileSize
+    };
+  } finally {
+    try {
+      await unlink(videoPath);
+      await unlink(audioPath);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+}
+
+/**
  * Clean up old temp files
  */
 export async function cleanupTempFiles(maxAgeHours: number = 24): Promise<void> {
@@ -213,5 +266,127 @@ export async function cleanupTempFiles(maxAgeHours: number = 24): Promise<void> 
     console.log('Temp files cleaned:', stdout.trim());
   } catch {
     // Ignore cleanup errors
+  }
+}
+
+/**
+ * Add captions/subtitles to video using FFmpeg
+ * Burns captions directly into the video for Instagram-style viewing
+ */
+export async function addCaptionsToVideo(
+  videoBuffer: Buffer,
+  srtPath: string,
+  options?: {
+    fontSize?: number;
+    fontColor?: string;
+    position?: 'top' | 'center' | 'bottom';
+    style?: 'minimal' | 'bold' | 'instagram';
+  }
+): Promise<GeneratedVideo> {
+  const ffmpegAvailable = await isFFmpegAvailable();
+  if (!ffmpegAvailable) {
+    throw new Error('FFmpeg is not installed');
+  }
+
+  await ensureTempDir();
+
+  const id = uuidv4();
+  const videoPath = path.join(TEMP_DIR, `${id}-video.mp4`);
+  const outputPath = path.join(TEMP_DIR, `${id}-captioned.mp4`);
+
+  try {
+    await writeFile(videoPath, videoBuffer);
+
+    // Configure caption styling based on style preset
+    let fontSize = options?.fontSize || 42;
+    let fontColor = 'FFFFFF'; // White
+    let outlineColor = '000000'; // Black
+    let outlineWidth = 2;
+    let shadowOffset = 1;
+    let marginV = 60;
+
+    switch (options?.style) {
+      case 'bold':
+        fontSize = 52;
+        outlineWidth = 3;
+        break;
+      case 'instagram':
+        fontSize = 48;
+        outlineWidth = 0;
+        // Instagram style uses a background box instead of outline
+        break;
+      case 'minimal':
+      default:
+        fontSize = 42;
+        outlineWidth = 2;
+        break;
+    }
+
+    // Adjust margin based on position
+    switch (options?.position) {
+      case 'top':
+        marginV = 80;
+        break;
+      case 'center':
+        marginV = 0;
+        break;
+      case 'bottom':
+      default:
+        marginV = 60;
+        break;
+    }
+
+    // Build FFmpeg filter for subtitles
+    // Using ASS styling for better control
+    const forceStyle = [
+      `FontSize=${fontSize}`,
+      `PrimaryColour=&H00${fontColor}`,
+      `OutlineColour=&H00${outlineColor}`,
+      `Outline=${outlineWidth}`,
+      `Shadow=${shadowOffset}`,
+      `MarginV=${marginV}`,
+      'Alignment=2', // Center bottom
+      'Bold=1'
+    ].join(',');
+
+    // Escape the SRT path for FFmpeg (handle special characters)
+    const escapedSrtPath = srtPath.replace(/'/g, "'\\''").replace(/:/g, '\\:');
+
+    const ffmpegCmd = [
+      'ffmpeg -y',
+      `-i "${videoPath}"`,
+      `-vf "subtitles='${escapedSrtPath}':force_style='${forceStyle}'"`,
+      '-c:a copy',
+      '-c:v libx264 -preset fast',
+      `"${outputPath}"`
+    ].join(' ');
+
+    console.log('FFmpeg caption command:', ffmpegCmd);
+    await execAsync(ffmpegCmd, { maxBuffer: 50 * 1024 * 1024 });
+
+    // Get video info
+    const { stdout: durationOutput } = await execAsync(
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${outputPath}"`
+    );
+    const duration = parseFloat(durationOutput.trim()) || 0;
+
+    const { stdout: sizeOutput } = await execAsync(
+      `stat -f%z "${outputPath}" 2>/dev/null || stat -c%s "${outputPath}"`
+    );
+    const fileSize = parseInt(sizeOutput.trim());
+
+    return {
+      filePath: outputPath,
+      duration,
+      width: 1080,
+      height: 1920,
+      fileSize
+    };
+  } finally {
+    try {
+      await unlink(videoPath);
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 }

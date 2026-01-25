@@ -26,12 +26,12 @@ export interface RedditSearchResult {
 }
 
 // GLP-1 related subreddits to monitor
+// Note: r/tirzepatide doesn't exist - use r/Mounjaro and r/Zepbound for tirzepatide content
 export const GLP1_SUBREDDITS = [
   'Ozempic',
   'Mounjaro',
   'Zepbound',
   'Semaglutide',
-  'tirzepatide',
   'GLP1_Medicines',
   'loseit',
   'WeightLossAdvice'
@@ -242,11 +242,12 @@ export async function searchSubreddit(
 
 /**
  * Find opportunities across all GLP-1 subreddits
- * Returns posts sorted by relevance score
+ * Returns posts sorted by date (newest first) with relevance as secondary sort
  */
 export async function findRedditOpportunities(
   subreddits: string[] = GLP1_SUBREDDITS.slice(0, 5), // Limit to avoid rate limiting
-  postsPerSubreddit: number = 15
+  postsPerSubreddit: number = 15,
+  sortBy: 'date' | 'relevance' = 'date'
 ): Promise<RedditPost[]> {
   const allPosts: RedditPost[] = [];
 
@@ -259,10 +260,23 @@ export async function findRedditOpportunities(
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 
-  // Sort by relevance score (highest first) and filter to questions
-  return allPosts
-    .filter(post => post.relevanceScore > 0)
-    .sort((a, b) => b.relevanceScore - a.relevanceScore);
+  // Filter to relevant posts
+  const filtered = allPosts.filter(post => post.relevanceScore > 0);
+
+  // Sort based on preference
+  if (sortBy === 'date') {
+    // Sort by date (newest first), with relevance as tiebreaker
+    return filtered.sort((a, b) => {
+      const dateDiff = b.created.getTime() - a.created.getTime();
+      if (Math.abs(dateDiff) < 3600000) { // Within 1 hour, use relevance
+        return b.relevanceScore - a.relevanceScore;
+      }
+      return dateDiff;
+    });
+  } else {
+    // Sort by relevance score (highest first)
+    return filtered.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  }
 }
 
 /**

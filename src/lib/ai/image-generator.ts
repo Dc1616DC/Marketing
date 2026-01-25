@@ -34,8 +34,8 @@ Style guidelines for Chase Wellness imagery:
 - Include: nourishing foods, protein-rich meals, supportive lifestyle scenes
 `;
 
-// Convert content topic to image prompt
-function buildImagePrompt(content: string, style: 'food' | 'lifestyle' | 'educational' | 'motivational'): string {
+// Convert content topic to image prompt (exported for Midjourney prompt generation)
+export function buildImagePrompt(content: string, style: 'food' | 'lifestyle' | 'educational' | 'motivational'): string {
   const stylePrompts = {
     food: `Professional food photography of a healthy, protein-rich meal.
 Style: Clean, modern, appetizing. Natural lighting, simple elegant plating.

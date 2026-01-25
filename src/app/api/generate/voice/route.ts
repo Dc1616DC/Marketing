@@ -6,8 +6,7 @@ import {
   generateVoiceover,
   generateReelVoiceover,
   isElevenLabsConfigured,
-  estimateVoiceDuration,
-  RECOMMENDED_VOICES
+  estimateVoiceDuration
 } from '@/lib/ai/voice-generator';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
@@ -80,17 +79,52 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET: Return available voices
+// GET: Return available voices from user's ElevenLabs account
 export async function GET() {
   const configured = isElevenLabsConfigured();
 
-  return NextResponse.json({
-    configured,
-    voices: Object.entries(RECOMMENDED_VOICES).map(([key, voice]) => ({
-      key,
-      id: voice.id,
-      name: voice.name,
-      description: voice.description
-    }))
-  });
+  if (!configured) {
+    return NextResponse.json({
+      configured: false,
+      voices: []
+    });
+  }
+
+  try {
+    // Fetch actual available voices from ElevenLabs
+    const response = await fetch('https://api.elevenlabs.io/v1/voices', {
+      headers: {
+        'xi-api-key': process.env.ELEVENLABS_API_KEY!
+      }
+    });
+
+    if (!response.ok) {
+      console.error('ElevenLabs voices fetch error:', response.status);
+      return NextResponse.json({
+        configured: true,
+        voices: [],
+        error: 'Failed to fetch voices from ElevenLabs'
+      });
+    }
+
+    const data = await response.json();
+    const voices = data.voices.map((v: { voice_id: string; name: string; labels?: { description?: string; gender?: string; accent?: string } }, index: number) => ({
+      key: `voice-${index}`,
+      id: v.voice_id,
+      name: v.name,
+      description: v.labels?.description || `${v.labels?.gender || ''} ${v.labels?.accent || ''}`.trim() || 'ElevenLabs voice'
+    }));
+
+    return NextResponse.json({
+      configured: true,
+      voices
+    });
+  } catch (error) {
+    console.error('Error fetching ElevenLabs voices:', error);
+    return NextResponse.json({
+      configured: true,
+      voices: [],
+      error: 'Failed to connect to ElevenLabs'
+    });
+  }
 }

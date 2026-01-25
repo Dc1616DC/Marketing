@@ -2,7 +2,7 @@
 // POST /api/generate/image
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateImage, generateReelImage, downloadImage } from '@/lib/ai/image-generator';
+import { generateImage, generateReelImage, downloadImage, buildImagePrompt } from '@/lib/ai/image-generator';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -20,13 +20,24 @@ async function ensureMediaDir(): Promise<void> {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { content, style, format } = body;
+    const { content, style, format, promptOnly } = body;
 
     if (!content) {
       return NextResponse.json(
         { error: 'Content is required' },
         { status: 400 }
       );
+    }
+
+    // If promptOnly, just return the prompt without generating
+    if (promptOnly) {
+      const imageStyle = style || 'lifestyle';
+      const prompt = buildImagePrompt(content, imageStyle);
+      return NextResponse.json({
+        success: true,
+        prompt,
+        style: imageStyle
+      });
     }
 
     // Generate image

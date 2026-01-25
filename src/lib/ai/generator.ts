@@ -198,47 +198,117 @@ export async function generateRedditReply(
   }
 }
 
+// Generate a blog post draft
+export async function generateBlogPost(
+  topic: string,
+  targetKeyword: string
+): Promise<{
+  success: boolean;
+  post?: {
+    title: string;
+    slug: string;
+    metaDescription: string;
+    category: string;
+    body: string;
+    internalLinks: string[];
+  };
+  error?: string;
+}> {
+  try {
+    const systemPrompt = buildSystemPrompt('instagram'); // Use Instagram as base for longer content
+    const userPrompt = GENERATION_PROMPTS.blogPost(topic, targetKeyword);
+
+    const completion = await getOpenAI().chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 4000,
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (content) {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          success: true,
+          post: parsed
+        };
+      }
+    }
+
+    return {
+      success: false,
+      error: 'No valid content returned from AI'
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      success: false,
+      error: message
+    };
+  }
+}
+
 // Helper: Get topic suggestions based on content pillar
 export function getTopicSuggestions(): Array<{ pillar: string; suggestions: string[] }> {
   return [
     {
       pillar: "GLP-1 Nutrition Basics",
       suggestions: [
-        "Why protein is crucial on GLP-1s",
-        "How much protein do you really need on Ozempic/Mounjaro",
-        "Hydration tips for GLP-1 users",
-        "Building a balanced plate when appetite is low",
-        "Why eating enough still matters on GLP-1s"
+        "Why protein matters more than calories on GLP-1s",
+        "How much protein do you really need on Ozempic/Mounjaro (the 1.2-1.6g/kg target)",
+        "Hydration tips for GLP-1 users: why it matters more now",
+        "Building a balanced plate when your appetite is basically gone",
+        "Why eating enough still matters even when you're not hungry",
+        "Spreading protein across meals: the 20-30g per meal approach"
       ]
     },
     {
       pillar: "Side Effect Management",
       suggestions: [
-        "5 ways to manage nausea on GLP-1 medications",
-        "Constipation on Ozempic: What actually helps",
-        "Why you might feel tired on GLP-1s (and what to do)",
+        "5 dietitian-approved ways to manage nausea on GLP-1 medications",
+        "Constipation on Ozempic: What actually helps (and what doesn't)",
+        "Why you might feel tired on GLP-1s (it might be your nutrition)",
         "Managing reflux while on weight loss medications",
-        "What to expect when increasing your dose"
+        "What to expect when increasing your dose",
+        "Hair loss on GLP-1s: The protein connection"
       ]
     },
     {
       pillar: "Practical Meal Ideas",
       suggestions: [
-        "High-protein snacks when you're not hungry",
-        "Quick 20g protein meals for busy days",
+        "High-protein snacks when you're not hungry but need fuel",
+        "Quick 20-30g protein meals for busy days",
         "Meal prep ideas for low appetite weeks",
-        "Gentle foods when GLP-1 nausea hits",
-        "Protein-rich breakfasts that actually sound good"
+        "Gentle, nausea-friendly foods that still hit your protein goals",
+        "Protein-rich breakfasts that actually sound appealing",
+        "30g protein dinners that won't overwhelm you"
       ]
     },
     {
       pillar: "Behavior & Mindset",
       suggestions: [
-        "Dealing with food noise reduction (and what replaces it)",
+        "Food noise is gone, but now what? Navigating the quiet",
         "Evening cravings on GLP-1s: The HALT approach",
-        "Building sustainable habits for when you stop meds",
-        "Why 'perfect' eating isn't the goal",
-        "Curiosity over criticism: A better approach to nutrition"
+        "Building sustainable habits for when you reduce or stop meds",
+        "Sustainable beats perfect: Why progress matters more than perfection",
+        "Curiosity over criticism: A better approach to nutrition",
+        "Head hunger vs. stomach hunger: Learning the difference"
+      ]
+    },
+    {
+      pillar: "Evening Eating & Mindful Evenings",
+      suggestions: [
+        "It's 9pm and you're not hungry but standing at the fridge anyway",
+        "The medication works during the day, but evenings are still hard",
+        "Cravings are data, not weakness: Reframing evening urges",
+        "What to do when you're not hungry but can't stop thinking about food",
+        "The 2-minute evening check-in that changes everything",
+        "Why the HALT framework works for GLP-1 users"
       ]
     },
     {
@@ -247,7 +317,7 @@ export function getTopicSuggestions(): Array<{ pillar: string; suggestions: stri
         "Why protein-first tracking beats calorie counting",
         "The value of tracking symptoms on GLP-1s",
         "How tracking helps you understand YOUR patterns",
-        "Using check-ins to catch evening eating triggers"
+        "Using Mindful Evenings check-ins to understand evening triggers"
       ]
     }
   ];

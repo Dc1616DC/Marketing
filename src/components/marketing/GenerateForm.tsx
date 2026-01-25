@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
-import { getTopicSuggestions } from '@/lib/ai/generator';
+import { getTopicSuggestions } from '@/lib/ai/topic-suggestions';
 
 interface GenerateFormProps {
   onGenerate: (data: {
@@ -226,7 +226,7 @@ export function GenerateForm({ onGenerate, isGenerating }: GenerateFormProps) {
                 <option value="r/loseit">r/loseit</option>
                 <option value="r/GLP1_Medicines">r/GLP1_Medicines</option>
                 <option value="r/Semaglutide">r/Semaglutide</option>
-                <option value="r/tirzepatide">r/tirzepatide</option>
+                <option value="r/WeightLossAdvice">r/WeightLossAdvice</option>
               </select>
             </div>
             <div>

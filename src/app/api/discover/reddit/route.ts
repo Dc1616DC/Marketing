@@ -2,6 +2,8 @@
 // GET /api/discover/reddit
 
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import {
   findRedditOpportunities,
   findNutritionQuestions,
@@ -16,6 +18,7 @@ export async function GET(request: NextRequest) {
     const topic = searchParams.get('topic'); // protein | nausea | constipation | muscle | general
     const subreddit = searchParams.get('subreddit');
     const limit = parseInt(searchParams.get('limit') || '20');
+    const sortBy = (searchParams.get('sort') || 'date') as 'date' | 'relevance';
 
     let posts;
 
@@ -35,13 +38,14 @@ export async function GET(request: NextRequest) {
       const result = await fetchSubredditPosts(subreddit, 'new', limit);
       posts = result.posts;
     } else {
-      // Default: find opportunities across all subreddits
-      posts = await findRedditOpportunities(GLP1_SUBREDDITS.slice(0, 5), Math.ceil(limit / 5));
+      // Default: find opportunities across all subreddits (sorted by date by default)
+      posts = await findRedditOpportunities(GLP1_SUBREDDITS.slice(0, 5), Math.ceil(limit / 5), sortBy);
     }
 
-    // Filter to most relevant
+    // Filter to relevant posts - lowered threshold to include newer posts with less engagement
+    // Any post with relevance > 5 OR is a question is included
     const filtered = posts
-      .filter(p => p.relevanceScore > 10 || p.isQuestion)
+      .filter(p => p.relevanceScore > 5 || p.isQuestion)
       .slice(0, limit);
 
     return NextResponse.json({

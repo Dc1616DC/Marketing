@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, TrendingUp, MessageSquare, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { RefreshCw, TrendingUp, MessageSquare, Loader2, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { RedditOpportunities, TrendingTopics } from '@/components/marketing';
 
@@ -47,11 +47,16 @@ export default function DiscoverPage() {
   const [trends, setTrends] = useState<TrendingTopic[]>([]);
   const [redditPosts, setRedditPosts] = useState<RedditPost[]>([]);
   const [postsAnalyzed, setPostsAnalyzed] = useState(0);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+  const lastFetchRef = useRef<number>(0);
 
-  // Fetch trends
+  // Fetch trends with cache busting
   const fetchTrends = useCallback(async () => {
     try {
-      const response = await fetch('/api/discover/trends');
+      const timestamp = Date.now();
+      const response = await fetch(`/api/discover/trends?_t=${timestamp}`, {
+        cache: 'no-store'
+      });
       if (response.ok) {
         const data = await response.json();
         setTrends(data.topics || []);
@@ -62,13 +67,18 @@ export default function DiscoverPage() {
     }
   }, []);
 
-  // Fetch Reddit opportunities
+  // Fetch Reddit opportunities with cache busting
   const fetchReddit = useCallback(async () => {
     try {
-      const response = await fetch('/api/discover/reddit?limit=25');
+      const timestamp = Date.now();
+      const response = await fetch(`/api/discover/reddit?limit=25&_t=${timestamp}`, {
+        cache: 'no-store'
+      });
       if (response.ok) {
         const data = await response.json();
         setRedditPosts(data.posts || []);
+        setLastFetchedAt(new Date());
+        lastFetchRef.current = Date.now();
       }
     } catch (err) {
       console.error('Failed to fetch Reddit:', err);
@@ -84,6 +94,39 @@ export default function DiscoverPage() {
     };
     fetchAll();
   }, [fetchTrends, fetchReddit]);
+
+  // Auto-refresh when page becomes visible (if data is older than 30 minutes)
+  useEffect(() => {
+    const STALE_TIME = 30 * 60 * 1000; // 30 minutes
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const timeSinceLastFetch = Date.now() - lastFetchRef.current;
+        if (timeSinceLastFetch > STALE_TIME) {
+          console.log('Data is stale, auto-refreshing...');
+          fetchTrends();
+          fetchReddit();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchTrends, fetchReddit]);
+
+  // Format "last updated" time
+  const formatLastUpdated = (date: Date | null) => {
+    if (!date) return 'Never';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString();
+  };
 
   // Refresh handler
   const handleRefresh = async () => {
@@ -246,8 +289,13 @@ export default function DiscoverPage() {
               <p className="text-2xl font-bold text-gray-900">{redditPosts.length}</p>
             </div>
           </div>
-          <div className="text-sm text-gray-500">
-            Monitoring: r/Ozempic, r/Mounjaro, r/Zepbound, and more
+          <div className="flex items-center gap-4 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              Updated: {formatLastUpdated(lastFetchedAt)}
+            </span>
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">r/Ozempic, r/Mounjaro, r/Zepbound +more</span>
           </div>
         </div>
 
